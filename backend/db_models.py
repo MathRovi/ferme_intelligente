@@ -32,6 +32,7 @@ class Anomaly(Base):
     __tablename__ = "anomalies"
     id = Column(Integer, primary_key=True, index=True)
     sensor_id = Column(BigInteger, ForeignKey("sensors.id", ondelete="CASCADE"))
+    plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"))  # 👈 Ajout ici
     timestamp = Column(DateTime, nullable=False)
     type = Column(Text, nullable=False)
     details = Column(Text)

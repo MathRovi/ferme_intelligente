@@ -1,4 +1,4 @@
-# anomalies_service/anomalies_utils.py
+# backend/anomalies_service/anomalies_utils.py
 
 import os
 import psycopg2
@@ -20,15 +20,22 @@ def get_db_connection():
 def get_recent_measurements():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, sensor_id, temperature, humidity FROM measurements ORDER BY timestamp DESC LIMIT 100")
+    cur.execute("""
+        SELECT id, sensor_id, plant_id, temperature, humidity
+        FROM measurements
+        WHERE analyzed = FALSE
+        ORDER BY timestamp ASC
+        LIMIT 100
+    """)
     rows = cur.fetchall()
     conn.close()
     return [
         {
             "id": r[0],
             "sensor_id": r[1],
-            "temperature": r[2],
-            "humidity": r[3]
+            "plant_id": r[2],
+            "temperature": r[3],
+            "humidity": r[4]
         }
         for r in rows
     ]
@@ -39,6 +46,7 @@ def detect_anomalies(measurements):
         if m["temperature"] > 40 or m["humidity"] < 20:
             anomalies.append({
                 "sensor_id": m["sensor_id"],
+                "plant_id": m["plant_id"],
                 "timestamp": datetime.utcnow(),
                 "type": "Valeur hors plage",
                 "details": f"Temp={m['temperature']}, Hum={m['humidity']}",
@@ -47,30 +55,64 @@ def detect_anomalies(measurements):
     return anomalies
 
 def insert_anomalies(anomalies):
+    if not anomalies:
+        return
     conn = get_db_connection()
     cur = conn.cursor()
     for a in anomalies:
         cur.execute(
-            "INSERT INTO anomalies (sensor_id, timestamp, type, details, severity) VALUES (%s, %s, %s, %s, %s)",
-            (a["sensor_id"], a["timestamp"], a["type"], a["details"], a["severity"])
+            "INSERT INTO anomalies (sensor_id, plant_id, timestamp, type, details, severity) VALUES (%s, %s, %s, %s, %s, %s)",
+            (a["sensor_id"], a["plant_id"], a["timestamp"], a["type"], a["details"], a["severity"])
         )
+    conn.commit()
+    conn.close()
+
+def mark_as_analyzed(measurement_ids):
+    if not measurement_ids:
+        return
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE measurements SET analyzed = TRUE WHERE id = ANY(%s)",
+        (measurement_ids,)
+    )
     conn.commit()
     conn.close()
 
 def get_all_anomalies():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM anomalies ORDER BY timestamp DESC")
+    cur.execute("SELECT id, sensor_id, plant_id, timestamp, type, details, severity FROM anomalies ORDER BY timestamp DESC")
     rows = cur.fetchall()
     conn.close()
     return [
         {
             "id": r[0],
             "sensor_id": r[1],
-            "timestamp": str(r[2]),
-            "type": r[3],
-            "details": r[4],
-            "severity": r[5]
+            "plant_id": r[2],
+            "timestamp": str(r[3]),
+            "type": r[4],
+            "details": r[5],
+            "severity": r[6]
+        }
+        for r in rows
+    ]
+
+def get_anomalies_by_plant(plant_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, sensor_id, plant_id, timestamp, type, details, severity FROM anomalies WHERE plant_id = %s ORDER BY timestamp DESC", (plant_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return [
+        {
+            "id": r[0],
+            "sensor_id": r[1],
+            "plant_id": r[2],
+            "timestamp": str(r[3]),
+            "type": r[4],
+            "details": r[5],
+            "severity": r[6]
         }
         for r in rows
     ]
