@@ -1,6 +1,6 @@
 # backend/db_models.py
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Float, DateTime, Text, TIMESTAMP, ForeignKey, BigInteger
+from sqlalchemy import Column, Integer, Float, DateTime, Text, TIMESTAMP, ForeignKey, BigInteger, Boolean
 from sqlalchemy.sql import func
 
 Base = declarative_base()
@@ -28,7 +28,7 @@ class Measurement(Base):
     temperature = Column(Float)
     humidity = Column(Float)
     raw_data = Column(Text)
-    analyzed = Column(Integer, default=False)
+    analyzed = Column(Boolean, default=False)
 
 class Anomaly(Base):
     __tablename__ = "anomalies"

@@ -21,7 +21,11 @@ def seed_plants(db: Session):
             print(f"✅ Déjà présent : {plant['name']} (ID={plant['id']})")
     db.commit()
 
-if __name__ == "__main__":
+# ✅ Fonction utilisée par Docker
+def seed_data():
     db = next(get_db())
     seed_plants(db)
     print("🌾 Insertion des plantes terminée.")
+
+if __name__ == "__main__":
+    seed_data()

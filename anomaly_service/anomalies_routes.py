@@ -1,7 +1,7 @@
 # backend/anomalies_service/anomalies_routes.py
 
 from fastapi import APIRouter, HTTPException, Query
-from anomalies_service.anomalies_utils import (
+from anomalies_utils import (
     get_recent_measurements,
     detect_anomalies,
     insert_anomalies,
