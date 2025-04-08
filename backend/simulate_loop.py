@@ -12,7 +12,7 @@ FORCE_ANOMALIES = True
 NUM_CAPTEURS = 6
 TEMPS_PAR_CAPTEUR = 2
 
-global_cycle_id = 85
+global_cycle_id = 0
 
 while True:
     for i in range(1, NUM_CAPTEURS + 1):
