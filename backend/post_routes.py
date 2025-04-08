@@ -1,3 +1,4 @@
+# backend/post_routes.py
 import logging
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
@@ -8,7 +9,6 @@ import base64
 import msgpack
 from datetime import datetime
 
-# ❌ PAS de prefix ici
 post_router = APIRouter()
 logging.basicConfig(level=logging.INFO)
 
@@ -19,37 +19,27 @@ class SensorData(BaseModel):
     temperature: float
     humidity: float
     version: str = "UNKNOWN"
+    cycle_id: int  # ✅ Ajout
 
 @post_router.post("/receive")
 async def receive_data(request: Request, db: Session = Depends(get_db)):
     try:
         raw_base64 = await request.body()
-        logging.info(f"[RECEIVED] Raw payload: {raw_base64[:30]}...")
-
         decoded = base64.b64decode(raw_base64)
         unpacked = msgpack.unpackb(decoded, raw=False)
-        logging.info(f"[DECODED] Data: {unpacked}")
-
         data = SensorData(**unpacked)
 
         sensor = db.query(Sensor).filter(Sensor.id == data.sensor_id).first()
         if not sensor:
-            logging.info(f"[NEW SENSOR] Capteur {data.sensor_id} non trouvé. Création...")
-            try:
-                sensor = Sensor(
-                    id=data.sensor_id,
-                    plant_id=data.plant_id,
-                    version=data.version,
-                    last_seen=datetime.utcnow()
-                )
-                db.add(sensor)
-                db.commit()
-                db.refresh(sensor)
-                logging.info(f"[DB] Capteur {sensor.id} bien inséré.")
-            except Exception as e:
-                db.rollback()
-                logging.error(f"[DB ERROR] Capteur NON inséré : {e}")
-                raise HTTPException(status_code=500, detail=f"Erreur insertion capteur : {e}")
+            sensor = Sensor(
+                id=data.sensor_id,
+                plant_id=data.plant_id,
+                version=data.version,
+                last_seen=datetime.utcnow()
+            )
+            db.add(sensor)
+            db.commit()
+            db.refresh(sensor)
         else:
             sensor.last_seen = datetime.utcnow()
             db.commit()
@@ -57,6 +47,7 @@ async def receive_data(request: Request, db: Session = Depends(get_db)):
         measurement = Measurement(
             sensor_id=data.sensor_id,
             plant_id=data.plant_id,
+            cycle_id=data.cycle_id,  # ✅ Ajouté ici
             timestamp=datetime.fromisoformat(data.timestamp),
             temperature=data.temperature,
             humidity=data.humidity,
@@ -64,7 +55,6 @@ async def receive_data(request: Request, db: Session = Depends(get_db)):
         )
         db.add(measurement)
         db.commit()
-        logging.info(f"[DB] Mesure enregistrée pour capteur {data.sensor_id}")
 
         return {
             "status": "success",

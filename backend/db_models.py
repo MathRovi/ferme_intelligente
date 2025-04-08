@@ -23,16 +23,19 @@ class Measurement(Base):
     id = Column(Integer, primary_key=True, index=True)
     sensor_id = Column(BigInteger, ForeignKey("sensors.id", ondelete="CASCADE"))
     plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"))
+    cycle_id = Column(Integer)  # ✅ Ajout
     timestamp = Column(DateTime, nullable=False)
     temperature = Column(Float)
     humidity = Column(Float)
     raw_data = Column(Text)
+    analyzed = Column(Integer, default=False)
 
 class Anomaly(Base):
     __tablename__ = "anomalies"
     id = Column(Integer, primary_key=True, index=True)
     sensor_id = Column(BigInteger, ForeignKey("sensors.id", ondelete="CASCADE"))
-    plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"))  # 👈 Ajout ici
+    plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"))
+    cycle_id = Column(Integer)  # ✅ Ajout
     timestamp = Column(DateTime, nullable=False)
     type = Column(Text, nullable=False)
     details = Column(Text)

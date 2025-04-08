@@ -5,7 +5,6 @@ import psycopg2
 from dotenv import load_dotenv
 from datetime import datetime
 
-# Chargement de l’environnement
 load_dotenv(dotenv_path="config.env")
 
 def get_db_connection():
@@ -21,7 +20,7 @@ def get_recent_measurements():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, sensor_id, plant_id, temperature, humidity
+        SELECT id, sensor_id, plant_id, temperature, humidity, cycle_id
         FROM measurements
         WHERE analyzed = FALSE
         ORDER BY timestamp ASC
@@ -35,7 +34,8 @@ def get_recent_measurements():
             "sensor_id": r[1],
             "plant_id": r[2],
             "temperature": r[3],
-            "humidity": r[4]
+            "humidity": r[4],
+            "cycle_id": r[5]
         }
         for r in rows
     ]
@@ -47,6 +47,7 @@ def detect_anomalies(measurements):
             anomalies.append({
                 "sensor_id": m["sensor_id"],
                 "plant_id": m["plant_id"],
+                "cycle_id": m["cycle_id"],  # ✅ Ajouté
                 "timestamp": datetime.utcnow(),
                 "type": "Valeur hors plage",
                 "details": f"Temp={m['temperature']}, Hum={m['humidity']}",
@@ -61,8 +62,8 @@ def insert_anomalies(anomalies):
     cur = conn.cursor()
     for a in anomalies:
         cur.execute(
-            "INSERT INTO anomalies (sensor_id, plant_id, timestamp, type, details, severity) VALUES (%s, %s, %s, %s, %s, %s)",
-            (a["sensor_id"], a["plant_id"], a["timestamp"], a["type"], a["details"], a["severity"])
+            "INSERT INTO anomalies (sensor_id, plant_id, cycle_id, timestamp, type, details, severity) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (a["sensor_id"], a["plant_id"], a["cycle_id"], a["timestamp"], a["type"], a["details"], a["severity"])
         )
     conn.commit()
     conn.close()
@@ -82,7 +83,7 @@ def mark_as_analyzed(measurement_ids):
 def get_all_anomalies():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, sensor_id, plant_id, timestamp, type, details, severity FROM anomalies ORDER BY timestamp DESC")
+    cur.execute("SELECT id, sensor_id, plant_id, cycle_id, timestamp, type, details, severity FROM anomalies ORDER BY timestamp DESC")
     rows = cur.fetchall()
     conn.close()
     return [
@@ -90,10 +91,11 @@ def get_all_anomalies():
             "id": r[0],
             "sensor_id": r[1],
             "plant_id": r[2],
-            "timestamp": str(r[3]),
-            "type": r[4],
-            "details": r[5],
-            "severity": r[6]
+            "cycle_id": r[3],
+            "timestamp": str(r[4]),
+            "type": r[5],
+            "details": r[6],
+            "severity": r[7]
         }
         for r in rows
     ]
@@ -101,7 +103,7 @@ def get_all_anomalies():
 def get_anomalies_by_plant(plant_id: int):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, sensor_id, plant_id, timestamp, type, details, severity FROM anomalies WHERE plant_id = %s ORDER BY timestamp DESC", (plant_id,))
+    cur.execute("SELECT id, sensor_id, plant_id, cycle_id, timestamp, type, details, severity FROM anomalies WHERE plant_id = %s ORDER BY timestamp DESC", (plant_id,))
     rows = cur.fetchall()
     conn.close()
     return [
@@ -109,10 +111,11 @@ def get_anomalies_by_plant(plant_id: int):
             "id": r[0],
             "sensor_id": r[1],
             "plant_id": r[2],
-            "timestamp": str(r[3]),
-            "type": r[4],
-            "details": r[5],
-            "severity": r[6]
+            "cycle_id": r[3],
+            "timestamp": str(r[4]),
+            "type": r[5],
+            "details": r[6],
+            "severity": r[7]
         }
         for r in rows
     ]
